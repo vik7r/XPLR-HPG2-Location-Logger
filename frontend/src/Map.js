@@ -12,9 +12,10 @@ const center = {
   lng: 77.2090
 };
 
+// Function to calculate distance using Haversine formula
 const calculateDistance = (loc1, loc2) => {
   if (!loc1 || !loc2) return 0; 
-  const R = 6371e3;
+  const R = 6371e3; // Radius of Earth in meters
   const lat1 = loc1.latitude * (Math.PI / 180);
   const lat2 = loc2.latitude * (Math.PI / 180);
   const deltaLat = (loc2.latitude - loc1.latitude) * (Math.PI / 180);
@@ -25,16 +26,16 @@ const calculateDistance = (loc1, loc2) => {
             Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; 
+  return R * c; // Distance in meters
 };
 
 function MapComponent() {
   const [location, setLocation] = useState(null);
   const [path, setPath] = useState([]);
-  const [previousLocation, setPreviousLocation] = useState(null);
   const [distance, setDistance] = useState(0);
   const [speed, setSpeed] = useState(0);
-  const [previousTimestamp, setPreviousTimestamp] = useState(Date.now());
+  const [previousLocation, setPreviousLocation] = useState(null);
+  const [previousTimestamp, setPreviousTimestamp] = useState(null);
 
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
@@ -47,26 +48,28 @@ function MapComponent() {
         console.log("Previous Location:", previousLocation);
         console.log("Current Location:", newLocation);
 
-        if (previousLocation) {
+        if (previousLocation && previousTimestamp) {
           const dist = calculateDistance(previousLocation, newLocation);
           setDistance((prev) => prev + dist / 1000); // Convert to km
-          
-          const timeDiff = (Date.now() - previousTimestamp) / 1000; 
-          const calculatedSpeed = dist / timeDiff;
-          setSpeed(calculatedSpeed.toFixed(2)); 
+
+          const timeDiff = (position.timestamp - previousTimestamp) / 1000; // Time in seconds
+          if (timeDiff > 0) {
+            const calculatedSpeed = dist / timeDiff;
+            setSpeed(calculatedSpeed.toFixed(2)); // Speed in m/s
+          }
         }
 
         setPreviousLocation(newLocation);
-        setPreviousTimestamp(Date.now());
+        setPreviousTimestamp(position.timestamp);
         setLocation(newLocation);
         setPath((prevPath) => [...prevPath, { lat: newLocation.latitude, lng: newLocation.longitude }]);
       },
-      (error) => console.error(error),
+      (error) => console.error("Geolocation Error:", error),
       { enableHighAccuracy: true, maximumAge: 1000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [previousLocation, previousTimestamp]);
+  }, []);
 
   return (
     <LoadScript googleMapsApiKey="AIzaSyCV9FysfrhVUzBQb4CJCZ-kBEYYcIBmEYw">
@@ -75,8 +78,8 @@ function MapComponent() {
         <Polyline path={path} options={{ strokeColor: "#FF0000", strokeOpacity: 1.0, strokeWeight: 2 }} />
       </GoogleMap>
       <div>
-        <p>Speed: {speed} m/s</p>
-        <p>Distance Traveled: {distance.toFixed(2)} km</p>
+        <p><strong>Speed:</strong> {speed} m/s</p>
+        <p><strong>Distance Traveled:</strong> {distance.toFixed(2)} km</p>
       </div>
     </LoadScript>
   );
