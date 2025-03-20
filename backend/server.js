@@ -11,7 +11,13 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json()); // Enable JSON parsing
-app.use(cors()); // Enable Cross-Origin Resource Sharing
+
+// CORS: Allow requests only from your frontend hosted on Vercel
+app.use(cors({
+    origin: "https://vr10-vikrams-projects-d866b85e.vercel.app", // Frontend URL
+    methods: ["GET", "POST"],
+    credentials: true
+}));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
@@ -62,7 +68,7 @@ app.get("/logs", async (req, res) => {
     }
 });
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Start the server (Ensure proper port binding for Render)
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
