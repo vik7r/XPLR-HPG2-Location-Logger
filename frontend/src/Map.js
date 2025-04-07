@@ -3,7 +3,7 @@ import axios from "axios";
 import {
   GoogleMap,
   LoadScript,
-  OverlayView,
+  Marker,
   Polyline,
   InfoWindow,
 } from "@react-google-maps/api";
@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Dark map style
+// Google Maps dark theme
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -155,20 +155,13 @@ function MapComponent() {
           zoom={15}
           options={{ styles: darkMapStyle }}
         >
-          {/* Glowing Pulse Marker */}
+          {/* Live Marker */}
           {location && (
-            <OverlayView
-              position={{
-                lat: location.latitude,
-                lng: location.longitude,
-              }}
-              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-            >
-              <div className="relative w-6 h-6">
-                <div className="absolute w-6 h-6 bg-cyan-400 rounded-full opacity-75 animate-ping" />
-                <div className="absolute w-3 h-3 bg-cyan-500 rounded-full top-[6px] left-[6px]" />
-              </div>
-            </OverlayView>
+            <Marker
+              position={{ lat: location.latitude, lng: location.longitude }}
+              label="Live"
+              animation={window.google?.maps.Animation.BOUNCE}
+            />
           )}
 
           <Polyline
@@ -193,9 +186,7 @@ function MapComponent() {
                 position={path[hoveredIndex]}
                 onCloseClick={() => setHoveredIndex(null)}
               >
-                <div className="text-black">
-                  {path[hoveredIndex].timestamp}
-                </div>
+                <div className="text-black">{path[hoveredIndex].timestamp}</div>
               </InfoWindow>
             )}
         </GoogleMap>
