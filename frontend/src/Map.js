@@ -1,32 +1,49 @@
-// Updated Map.js for live tracking, speed, and distance
 import React, { useState, useEffect } from "react";
-import { GoogleMap, LoadScript, Marker, Polyline } from "@react-google-maps/api";
+import axios from "axios";
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  Polyline,
+  InfoWindow,
+} from "@react-google-maps/api";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const containerStyle = {
   width: "100%",
-  height: "400px"
+  height: "500px",
 };
 
-const center = {
+const defaultCenter = {
   lat: 28.6139,
-  lng: 77.2090
+  lng: 77.2090,
 };
 
-// Function to calculate distance using Haversine formula
 const calculateDistance = (loc1, loc2) => {
-  if (!loc1 || !loc2) return 0; 
-  const R = 6371e3; // Radius of Earth in meters
+  if (!loc1 || !loc2) return 0;
+  const R = 6371e3;
   const lat1 = loc1.latitude * (Math.PI / 180);
   const lat2 = loc2.latitude * (Math.PI / 180);
   const deltaLat = (loc2.latitude - loc1.latitude) * (Math.PI / 180);
   const deltaLng = (loc2.longitude - loc1.longitude) * (Math.PI / 180);
 
-  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-            Math.cos(lat1) * Math.cos(lat2) *
-            Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(deltaLng / 2) *
+      Math.sin(deltaLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; // Distance in meters
+  return R * c;
 };
 
 function MapComponent() {
@@ -34,54 +51,172 @@ function MapComponent() {
   const [path, setPath] = useState([]);
   const [distance, setDistance] = useState(0);
   const [speed, setSpeed] = useState(0);
+  const [speedHistory, setSpeedHistory] = useState([]);
   const [previousLocation, setPreviousLocation] = useState(null);
   const [previousTimestamp, setPreviousTimestamp] = useState(null);
+  const [showTimestamps, setShowTimestamps] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
+  useEffect(() => {
+    axios
+      .get("https://vr10-1neww.onrender.com/logs")
+      .then((res) => {
+        const historyPath = res.data.map((loc) => ({
+          lat: loc.latitude,
+          lng: loc.longitude,
+          timestamp: new Date(loc.timestamp).toLocaleTimeString(),
+        }));
+        setPath(historyPath);
+      })
+      .catch((err) => console.error("Error fetching history:", err));
+  }, []);
 
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
-      (position) => {
+      async (position) => {
         const newLocation = {
           latitude: position.coords.latitude,
-          longitude: position.coords.longitude
+          longitude: position.coords.longitude,
         };
-
-        console.log("Previous Location:", previousLocation);
-        console.log("Current Location:", newLocation);
 
         if (previousLocation && previousTimestamp) {
           const dist = calculateDistance(previousLocation, newLocation);
-          setDistance((prev) => prev + dist / 1000); // Convert to km
-
-          const timeDiff = (position.timestamp - previousTimestamp) / 1000; // Time in seconds
+          setDistance((prev) => prev + dist / 1000);
+          const timeDiff = (position.timestamp - previousTimestamp) / 1000;
           if (timeDiff > 0) {
             const calculatedSpeed = dist / timeDiff;
-            setSpeed(calculatedSpeed.toFixed(2)); // Speed in m/s
+            setSpeed(calculatedSpeed.toFixed(2));
+            setSpeedHistory((prev) => [
+              ...prev.slice(-29),
+              {
+                time: new Date().toLocaleTimeString(),
+                speed: +calculatedSpeed.toFixed(2),
+              },
+            ]);
           }
+        }
+
+        try {
+          await axios.post("https://vr10-1neww.onrender.com/log", {
+            latitude: newLocation.latitude,
+            longitude: newLocation.longitude,
+          });
+        } catch (err) {
+          console.error("Error saving location:", err);
         }
 
         setPreviousLocation(newLocation);
         setPreviousTimestamp(position.timestamp);
         setLocation(newLocation);
-        setPath((prevPath) => [...prevPath, { lat: newLocation.latitude, lng: newLocation.longitude }]);
+        setPath((prevPath) => [
+          ...prevPath,
+          {
+            lat: newLocation.latitude,
+            lng: newLocation.longitude,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
       },
       (error) => console.error("Geolocation Error:", error),
       { enableHighAccuracy: true, maximumAge: 1000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [previousLocation, previousTimestamp]);
+
+  const center = location
+    ? { lat: location.latitude, lng: location.longitude }
+    : defaultCenter;
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyCV9FysfrhVUzBQb4CJCZ-kBEYYcIBmEYw">
-      <GoogleMap mapContainerStyle={containerStyle} center={location || center} zoom={15}>
-        {location && <Marker position={{ lat: location.latitude, lng: location.longitude }} />}
-        <Polyline path={path} options={{ strokeColor: "#FF0000", strokeOpacity: 1.0, strokeWeight: 2 }} />
-      </GoogleMap>
-      <div>
-        <p><strong>Speed:</strong> {speed} m/s</p>
-        <p><strong>Distance Traveled:</strong> {distance.toFixed(2)} km</p>
+    <div className="flex flex-col items-center gap-4">
+      <LoadScript googleMapsApiKey="AIzaSyCV9FysfrhVUzBQb4CJCZ-kBEYYcIBmEYw">
+        <GoogleMap
+          mapContainerStyle={containerStyle}
+          center={center}
+          zoom={15}
+        >
+          {path.length > 0 && (
+            <>
+              <Marker position={path[0]} label="Start" />
+              <Marker position={path[path.length - 1]} label="End" />
+            </>
+          )}
+
+          {location && (
+            <Marker
+              position={{ lat: location.latitude, lng: location.longitude }}
+              label="Live"
+            />
+          )}
+
+          <Polyline
+            path={path}
+            options={{
+              strokeColor: "#FF0000",
+              strokeOpacity: 1.0,
+              strokeWeight: 2,
+            }}
+            onMouseMove={(e) => {
+              const lat = e.latLng.lat();
+              const lng = e.latLng.lng();
+              const index = path.findIndex(
+                (p) =>
+                  Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001
+              );
+              setHoveredIndex(index);
+            }}
+          />
+
+          {showTimestamps &&
+            hoveredIndex !== null &&
+            path[hoveredIndex] &&
+            path[hoveredIndex].timestamp && (
+              <InfoWindow
+                position={path[hoveredIndex]}
+                onCloseClick={() => setHoveredIndex(null)}
+              >
+                <div>{path[hoveredIndex].timestamp}</div>
+              </InfoWindow>
+            )}
+        </GoogleMap>
+      </LoadScript>
+
+      <div className="text-center space-y-2">
+        <p>
+          <strong>Speed:</strong> {speed} m/s
+        </p>
+        <p>
+          <strong>Distance Traveled:</strong> {distance.toFixed(2)} km
+        </p>
+        <button
+          onClick={() => setShowTimestamps((prev) => !prev)}
+          className="px-3 py-1 bg-blue-600 text-white rounded-lg"
+        >
+          Toggle Timestamps
+        </button>
       </div>
-    </LoadScript>
+
+      <div className="w-full h-64 p-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={speedHistory}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis
+              label={{ value: "Speed (m/s)", angle: -90, position: "insideLeft" }}
+            />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="speed"
+              stroke="#8884d8"
+              strokeWidth={2}
+              dot
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
