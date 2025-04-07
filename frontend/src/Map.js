@@ -17,6 +17,29 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Dark mode styles for Google Maps
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a3646" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#304a7d" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6f9ba5" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0e1626" }],
+  },
+];
+
+// Reusable constants
 const containerStyle = {
   width: "100%",
   height: "500px",
@@ -24,26 +47,22 @@ const containerStyle = {
 
 const defaultCenter = {
   lat: 28.6139,
-  lng: 77.2090,
+  lng: 77.209,
 };
 
+// Haversine distance calculator
 const calculateDistance = (loc1, loc2) => {
   if (!loc1 || !loc2) return 0;
   const R = 6371e3;
-  const lat1 = loc1.latitude * (Math.PI / 180);
-  const lat2 = loc2.latitude * (Math.PI / 180);
-  const deltaLat = (loc2.latitude - loc1.latitude) * (Math.PI / 180);
-  const deltaLng = (loc2.longitude - loc1.longitude) * (Math.PI / 180);
-
+  const toRad = (deg) => deg * (Math.PI / 180);
+  const dLat = toRad(loc2.latitude - loc1.latitude);
+  const dLng = toRad(loc2.longitude - loc1.longitude);
   const a =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(lat1) *
-      Math.cos(lat2) *
-      Math.sin(deltaLng / 2) *
-      Math.sin(deltaLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(loc1.latitude)) *
+      Math.cos(toRad(loc2.latitude)) *
+      Math.sin(dLng / 2) ** 2;
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 };
 
 function MapComponent() {
@@ -57,6 +76,7 @@ function MapComponent() {
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
+  // Historical path
   useEffect(() => {
     axios
       .get("https://vr10-1neww.onrender.com/logs")
@@ -71,17 +91,19 @@ function MapComponent() {
       .catch((err) => console.error("Error fetching history:", err));
   }, []);
 
+  // Live tracking
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
-        const newLocation = {
+        const newLoc = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
 
         if (previousLocation && previousTimestamp) {
-          const dist = calculateDistance(previousLocation, newLocation);
+          const dist = calculateDistance(previousLocation, newLoc);
           setDistance((prev) => prev + dist / 1000);
+
           const timeDiff = (position.timestamp - previousTimestamp) / 1000;
           if (timeDiff > 0) {
             const calculatedSpeed = dist / timeDiff;
@@ -98,85 +120,81 @@ function MapComponent() {
 
         try {
           await axios.post("https://vr10-1neww.onrender.com/log", {
-            latitude: newLocation.latitude,
-            longitude: newLocation.longitude,
+            latitude: newLoc.latitude,
+            longitude: newLoc.longitude,
           });
         } catch (err) {
           console.error("Error saving location:", err);
         }
 
-        setPreviousLocation(newLocation);
+        setPreviousLocation(newLoc);
         setPreviousTimestamp(position.timestamp);
-        setLocation(newLocation);
+        setLocation(newLoc);
         setPath((prevPath) => [
           ...prevPath,
           {
-            lat: newLocation.latitude,
-            lng: newLocation.longitude,
+            lat: newLoc.latitude,
+            lng: newLoc.longitude,
             timestamp: new Date().toLocaleTimeString(),
           },
         ]);
       },
-      (error) => console.error("Geolocation Error:", error),
+      (err) => console.error("Geolocation error:", err),
       { enableHighAccuracy: true, maximumAge: 1000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [previousLocation, previousTimestamp]);
 
-  const center = location
+  const mapCenter = location
     ? { lat: location.latitude, lng: location.longitude }
     : defaultCenter;
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col gap-6 p-4 bg-black text-white min-h-screen">
       <LoadScript googleMapsApiKey="AIzaSyCV9FysfrhVUzBQb4CJCZ-kBEYYcIBmEYw">
         <GoogleMap
           mapContainerStyle={containerStyle}
-          center={center}
+          center={mapCenter}
           zoom={15}
+          options={{ styles: darkMapStyle }}
         >
+          {/* Markers */}
           {path.length > 0 && (
             <>
               <Marker position={path[0]} label="Start" />
               <Marker position={path[path.length - 1]} label="End" />
             </>
           )}
-
           {location && (
             <Marker
               position={{ lat: location.latitude, lng: location.longitude }}
               label="Live"
+              animation={window.google?.maps.Animation.BOUNCE}
             />
           )}
-
           <Polyline
             path={path}
             options={{
-              strokeColor: "#FF0000",
-              strokeOpacity: 1.0,
-              strokeWeight: 2,
+              strokeColor: "#00ffff",
+              strokeOpacity: 0.8,
+              strokeWeight: 3,
             }}
-            onMouseMove={(e) => {
-              const lat = e.latLng.lat();
-              const lng = e.latLng.lng();
+            onMouseOver={(e) => {
               const index = path.findIndex(
-                (p) =>
-                  Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001
+                (p) => p.lat === e.latLng.lat() && p.lng === e.latLng.lng()
               );
               setHoveredIndex(index);
             }}
           />
-
           {showTimestamps &&
             hoveredIndex !== null &&
-            path[hoveredIndex] &&
-            path[hoveredIndex].timestamp && (
+            path[hoveredIndex]?.timestamp && (
               <InfoWindow
                 position={path[hoveredIndex]}
                 onCloseClick={() => setHoveredIndex(null)}
               >
-                <div>{path[hoveredIndex].timestamp}</div>
+                <div className="text-black">{path[hoveredIndex].timestamp}</div>
               </InfoWindow>
             )}
         </GoogleMap>
@@ -191,27 +209,33 @@ function MapComponent() {
         </p>
         <button
           onClick={() => setShowTimestamps((prev) => !prev)}
-          className="px-3 py-1 bg-blue-600 text-white rounded-lg"
+          className="px-3 py-1 bg-blue-600 hover:bg-blue-800 rounded-lg"
         >
           Toggle Timestamps
         </button>
       </div>
 
-      <div className="w-full h-64 p-4">
+      <div className="bg-gray-800 p-4 rounded-xl w-full h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={speedHistory}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+            <XAxis dataKey="time" stroke="#fff" />
             <YAxis
-              label={{ value: "Speed (m/s)", angle: -90, position: "insideLeft" }}
+              label={{
+                value: "Speed (m/s)",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#fff",
+              }}
+              stroke="#fff"
             />
             <Tooltip />
             <Line
               type="monotone"
               dataKey="speed"
-              stroke="#8884d8"
+              stroke="#00ffff"
               strokeWidth={2}
-              dot
+              dot={{ r: 3 }}
             />
           </LineChart>
         </ResponsiveContainer>
