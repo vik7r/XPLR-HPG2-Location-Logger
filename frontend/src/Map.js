@@ -4,8 +4,6 @@ import {
   GoogleMap,
   LoadScript,
   Marker,
-  Polyline,
-  InfoWindow,
 } from "@react-google-maps/api";
 import {
   LineChart,
@@ -64,28 +62,11 @@ const calculateDistance = (loc1, loc2) => {
 
 function MapComponent() {
   const [location, setLocation] = useState(null);
-  const [path, setPath] = useState([]);
   const [distance, setDistance] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [speedHistory, setSpeedHistory] = useState([]);
   const [previousLocation, setPreviousLocation] = useState(null);
   const [previousTimestamp, setPreviousTimestamp] = useState(null);
-  const [showTimestamps, setShowTimestamps] = useState(false);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-
-  useEffect(() => {
-    axios
-      .get("https://vr10-1neww.onrender.com/logs")
-      .then((res) => {
-        const historyPath = res.data.map((loc) => ({
-          lat: loc.latitude,
-          lng: loc.longitude,
-          timestamp: new Date(loc.timestamp).toLocaleTimeString(),
-        }));
-        setPath(historyPath);
-      })
-      .catch((err) => console.error("Error fetching history:", err));
-  }, []);
 
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
@@ -125,14 +106,6 @@ function MapComponent() {
         setPreviousLocation(newLoc);
         setPreviousTimestamp(position.timestamp);
         setLocation(newLoc);
-        setPath((prevPath) => [
-          ...prevPath,
-          {
-            lat: newLoc.latitude,
-            lng: newLoc.longitude,
-            timestamp: new Date().toLocaleTimeString(),
-          },
-        ]);
       },
       (err) => console.error("Geolocation error:", err),
       { enableHighAccuracy: true, maximumAge: 1000 }
@@ -154,44 +127,18 @@ function MapComponent() {
           zoom={15}
           options={{ styles: darkMapStyle }}
         >
-          {/* Simple Marker for Live Location */}
           {location && (
             <Marker
-              position={{ lat: location.latitude, lng: location.longitude }}
-              label="Live"
-              icon={{
-                url: "http://maps.google.com/mapfiles/ms/icons/cyan-dot.png",
+              position={{
+                lat: location.latitude,
+                lng: location.longitude,
               }}
+              icon={{
+                url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+              }}
+              label="Live"
             />
           )}
-
-          <Polyline
-            path={path}
-            options={{
-              strokeColor: "#00ffff",
-              strokeOpacity: 0.8,
-              strokeWeight: 3,
-            }}
-            onMouseOver={(e) => {
-              const index = path.findIndex(
-                (p) => p.lat === e.latLng.lat() && p.lng === e.latLng.lng()
-              );
-              setHoveredIndex(index);
-            }}
-          />
-
-          {showTimestamps &&
-            hoveredIndex !== null &&
-            path[hoveredIndex]?.timestamp && (
-              <InfoWindow
-                position={path[hoveredIndex]}
-                onCloseClick={() => setHoveredIndex(null)}
-              >
-                <div className="text-black">
-                  {path[hoveredIndex].timestamp}
-                </div>
-              </InfoWindow>
-            )}
         </GoogleMap>
       </LoadScript>
 
@@ -202,12 +149,6 @@ function MapComponent() {
         <p>
           <strong>Distance Traveled:</strong> {distance.toFixed(2)} km
         </p>
-        <button
-          onClick={() => setShowTimestamps((prev) => !prev)}
-          className="px-3 py-1 bg-blue-600 hover:bg-blue-800 rounded-lg"
-        >
-          Toggle Timestamps
-        </button>
       </div>
 
       <div className="bg-gray-800 p-4 rounded-xl w-full h-64">
@@ -228,7 +169,7 @@ function MapComponent() {
             <Line
               type="monotone"
               dataKey="speed"
-              stroke="#00ffff"
+              stroke="#ff4444"
               strokeWidth={2}
               dot={{ r: 3 }}
             />
