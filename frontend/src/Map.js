@@ -3,7 +3,7 @@ import axios from "axios";
 import {
   GoogleMap,
   LoadScript,
-  Marker,
+  OverlayView,
   Polyline,
   InfoWindow,
 } from "@react-google-maps/api";
@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Dark mode styles for Google Maps
+// Dark map style
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -39,7 +39,6 @@ const darkMapStyle = [
   },
 ];
 
-// Reusable constants
 const containerStyle = {
   width: "100%",
   height: "500px",
@@ -50,7 +49,6 @@ const defaultCenter = {
   lng: 77.209,
 };
 
-// Haversine distance calculator
 const calculateDistance = (loc1, loc2) => {
   if (!loc1 || !loc2) return 0;
   const R = 6371e3;
@@ -76,7 +74,6 @@ function MapComponent() {
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  // Historical path
   useEffect(() => {
     axios
       .get("https://vr10-1neww.onrender.com/logs")
@@ -91,7 +88,6 @@ function MapComponent() {
       .catch((err) => console.error("Error fetching history:", err));
   }, []);
 
-  // Live tracking
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
@@ -159,20 +155,22 @@ function MapComponent() {
           zoom={15}
           options={{ styles: darkMapStyle }}
         >
-          {/* Markers */}
-          {path.length > 0 && (
-            <>
-              <Marker position={path[0]} label="Start" />
-              <Marker position={path[path.length - 1]} label="End" />
-            </>
-          )}
+          {/* Glowing Pulse Marker */}
           {location && (
-            <Marker
-              position={{ lat: location.latitude, lng: location.longitude }}
-              label="Live"
-              animation={window.google?.maps.Animation.BOUNCE}
-            />
+            <OverlayView
+              position={{
+                lat: location.latitude,
+                lng: location.longitude,
+              }}
+              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+            >
+              <div className="relative w-6 h-6">
+                <div className="absolute w-6 h-6 bg-cyan-400 rounded-full opacity-75 animate-ping" />
+                <div className="absolute w-3 h-3 bg-cyan-500 rounded-full top-[6px] left-[6px]" />
+              </div>
+            </OverlayView>
           )}
+
           <Polyline
             path={path}
             options={{
@@ -187,6 +185,7 @@ function MapComponent() {
               setHoveredIndex(index);
             }}
           />
+
           {showTimestamps &&
             hoveredIndex !== null &&
             path[hoveredIndex]?.timestamp && (
@@ -194,7 +193,9 @@ function MapComponent() {
                 position={path[hoveredIndex]}
                 onCloseClick={() => setHoveredIndex(null)}
               >
-                <div className="text-black">{path[hoveredIndex].timestamp}</div>
+                <div className="text-black">
+                  {path[hoveredIndex].timestamp}
+                </div>
               </InfoWindow>
             )}
         </GoogleMap>
