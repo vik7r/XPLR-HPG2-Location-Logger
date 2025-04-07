@@ -17,7 +17,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Google Maps dark theme
+const containerStyle = {
+  width: "100%",
+  height: "500px",
+};
+
+const defaultCenter = {
+  lat: 28.6139,
+  lng: 77.209,
+};
+
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
@@ -38,16 +47,6 @@ const darkMapStyle = [
     stylers: [{ color: "#0e1626" }],
   },
 ];
-
-const containerStyle = {
-  width: "100%",
-  height: "500px",
-};
-
-const defaultCenter = {
-  lat: 28.6139,
-  lng: 77.209,
-};
 
 const calculateDistance = (loc1, loc2) => {
   if (!loc1 || !loc2) return 0;
@@ -155,12 +154,14 @@ function MapComponent() {
           zoom={15}
           options={{ styles: darkMapStyle }}
         >
-          {/* Live Marker */}
+          {/* Simple Marker for Live Location */}
           {location && (
             <Marker
               position={{ lat: location.latitude, lng: location.longitude }}
               label="Live"
-              animation={window.google?.maps.Animation.BOUNCE}
+              icon={{
+                url: "http://maps.google.com/mapfiles/ms/icons/cyan-dot.png",
+              }}
             />
           )}
 
@@ -186,7 +187,9 @@ function MapComponent() {
                 position={path[hoveredIndex]}
                 onCloseClick={() => setHoveredIndex(null)}
               >
-                <div className="text-black">{path[hoveredIndex].timestamp}</div>
+                <div className="text-black">
+                  {path[hoveredIndex].timestamp}
+                </div>
               </InfoWindow>
             )}
         </GoogleMap>
