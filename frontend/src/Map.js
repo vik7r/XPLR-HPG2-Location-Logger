@@ -58,20 +58,6 @@ function MapComponent() {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   useEffect(() => {
-    axios
-      .get("https://vr10-1neww.onrender.com/logs")
-      .then((res) => {
-        const historyPath = res.data.map((loc) => ({
-          lat: loc.latitude,
-          lng: loc.longitude,
-          timestamp: new Date(loc.timestamp).toLocaleTimeString(),
-        }));
-        setPath(historyPath);
-      })
-      .catch((err) => console.error("Error fetching history:", err));
-  }, []);
-
-  useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
         const newLocation = {
@@ -139,22 +125,25 @@ function MapComponent() {
                 <Marker position={path[path.length - 1]} label="End" />
               </>
             )}
+
             {location && (
               <Marker
                 position={{ lat: location.latitude, lng: location.longitude }}
                 label="Live"
               />
             )}
-            <Polyline
-              path={path}
-              options={{ strokeColor: "#FF0000", strokeOpacity: 1.0, strokeWeight: 2 }}
-              onMouseOver={(e) => {
-                const index = path.findIndex(
-                  (p) => p.lat === e.latLng.lat() && p.lng === e.latLng.lng()
-                );
-                setHoveredIndex(index);
-              }}
-            />
+
+            {path.length > 1 && (
+              <Polyline
+                path={path}
+                options={{
+                  strokeColor: "#FF0000",
+                  strokeOpacity: 1.0,
+                  strokeWeight: 2,
+                }}
+              />
+            )}
+
             {showTimestamps && hoveredIndex !== null && path[hoveredIndex]?.timestamp && (
               <InfoWindow
                 position={path[hoveredIndex]}
