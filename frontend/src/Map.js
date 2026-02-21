@@ -120,7 +120,7 @@ function MapComponent() {
     <div className="space-y-8">
       {/* Map Container with Glassmorphism */}
       <div className="backdrop-blur-md bg-white/20 border border-white/50 rounded-3xl overflow-hidden shadow-2xl">
-        <LoadScript googleMapsApiKey="AIzaSyCV9FysfrhVUzBQb4CJCZ-kBEYYcIBmEYw">
+        <LoadScript googleMapsApiKey="Your_Google_Maps_API_Key">
           <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={15}>
             {path.length > 0 && (
               <>
