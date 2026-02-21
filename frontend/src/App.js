@@ -173,7 +173,7 @@ function App() {
         console.error("❌ Error saving XPLR location:", error);
       }
     }
-  }, [deviceLocation, useXPLR]);
+  }, [deviceLocation, useXPLR, previousLocation]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-400 to-pink-300 p-6">
