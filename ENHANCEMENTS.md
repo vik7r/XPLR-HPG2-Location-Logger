@@ -34,7 +34,7 @@ This project has been enhanced with a modern, sleek interface featuring **glassm
 #### Header Section
 ```
 🛰️ XPLR HPG2 Location Tracker
-Real-time GPS and high-precision positioning with modern glassmorphism UI
+Real-time GPS and high-precision positioning
 ```
 
 #### Device Selection

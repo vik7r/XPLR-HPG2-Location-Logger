@@ -144,7 +144,7 @@ The application will automatically open at `http://localhost:3000`
 ### Header
 ```
 🛰️ XPLR HPG2 Location Tracker
-Real-time GPS and high-precision positioning with modern glassmorphism UI
+Real-time GPS and high-precision positioning
 ```
 
 ### Device Selection Panel

@@ -184,7 +184,7 @@ function App() {
             🛰️ XPLR HPG2 Location Tracker
           </h1>
           <p className="text-white/80 text-lg drop-shadow-md">
-            Real-time GPS and high-precision positioning with modern glassmorphism UI
+            Real-time GPS and high-precision positioning
           </p>
         </div>
 
